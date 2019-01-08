@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/javaClasses.inline.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "code/nmethod.hpp"
 #include "code/pcDesc.hpp"
@@ -1483,6 +1484,18 @@ void JvmtiExport::post_object_free(JvmtiEnv* env, jlong tag) {
 }
 
 void JvmtiExport::post_resource_exhausted(jint resource_exhausted_flags, const char* description) {
+
+  JavaThread *thread  = JavaThread::current();
+
+  // JDK-8213834: handlers of ResourceExhausted may attempt some analysis
+  // which often requires running java.
+  // This will cause problems on threads not able to run java, e.g. compiler
+  // threads. To forestall these problems, we therefore suppress sending this
+  // event from threads which are not able to run java.
+  if (!thread->can_call_java()) {
+    return;
+  }
+
   EVT_TRIG_TRACE(JVMTI_EVENT_RESOURCE_EXHAUSTED, ("Trg resource exhausted event triggered" ));
 
   JvmtiEnvIterator it;
@@ -1490,7 +1503,6 @@ void JvmtiExport::post_resource_exhausted(jint resource_exhausted_flags, const c
     if (env->is_enabled(JVMTI_EVENT_RESOURCE_EXHAUSTED)) {
       EVT_TRACE(JVMTI_EVENT_RESOURCE_EXHAUSTED, ("Evt resource exhausted event sent" ));
 
-      JavaThread *thread  = JavaThread::current();
       JvmtiThreadEventMark jem(thread);
       JvmtiJavaThreadEventTransition jet(thread);
       jvmtiEventResourceExhausted callback = env->callbacks()->ResourceExhausted;
@@ -2556,6 +2568,11 @@ void JvmtiExport::post_vm_object_alloc(JavaThread *thread, oop object) {
 }
 
 void JvmtiExport::post_sampled_object_alloc(JavaThread *thread, oop object) {
+  JvmtiThreadState *state = thread->jvmti_thread_state();
+  if (state == NULL) {
+    return;
+  }
+
   EVT_TRIG_TRACE(JVMTI_EVENT_SAMPLED_OBJECT_ALLOC,
                  ("[%s] Trg sampled object alloc triggered",
                   JvmtiTrace::safe_get_thread_name(thread)));
@@ -2564,14 +2581,16 @@ void JvmtiExport::post_sampled_object_alloc(JavaThread *thread, oop object) {
   }
   HandleMark hm(thread);
   Handle h(thread, object);
-  JvmtiEnvIterator it;
-  for (JvmtiEnv* env = it.first(); env != NULL; env = it.next(env)) {
-    if (env->is_enabled(JVMTI_EVENT_SAMPLED_OBJECT_ALLOC)) {
+
+  JvmtiEnvThreadStateIterator it(state);
+  for (JvmtiEnvThreadState* ets = it.first(); ets != NULL; ets = it.next(ets)) {
+    if (ets->is_enabled(JVMTI_EVENT_SAMPLED_OBJECT_ALLOC)) {
       EVT_TRACE(JVMTI_EVENT_SAMPLED_OBJECT_ALLOC,
                 ("[%s] Evt sampled object alloc sent %s",
                  JvmtiTrace::safe_get_thread_name(thread),
                  object == NULL ? "NULL" : object->klass()->external_name()));
 
+      JvmtiEnv *env = ets->get_env();
       JvmtiObjectAllocEventMark jem(thread, h());
       JvmtiJavaThreadEventTransition jet(thread);
       jvmtiEventSampledObjectAlloc callback = env->callbacks()->SampledObjectAlloc;

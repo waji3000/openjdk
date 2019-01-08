@@ -57,7 +57,7 @@ import java.security.Permission;
  * RFC 2732</a>. Literal IPv6 addresses must however, be enclosed in '[]' characters.
  * The <i>dnsname</i> specification can be preceded by "*." which means
  * the name will match any hostname whose right-most domain labels are the same as
- * this name. For example, "*.oracle.com" matches "foo.bar.oracle.com"
+ * this name. For example, "*.example.com" matches "foo.bar.example.com"
  * <p>
  * <i>portrange</i> is used to specify a port number, or a bounded or unbounded range of ports
  * that this permission applies to. If portrange is absent or invalid, then a default
@@ -78,18 +78,18 @@ import java.security.Permission;
  * <tr><th scope="col">Example url</th><th scope="col">Description</th></tr>
  * </thead>
  * <tbody style="text-align:left">
- * <tr><th scope="row" style="white-space:nowrap;">http://www.oracle.com/a/b/c.html</th>
+ * <tr><th scope="row" style="white-space:nowrap;">http://www.example.com/a/b/c.html</th>
  *   <td>A url which identifies a specific (single) resource</td>
  * </tr>
- * <tr><th scope="row">http://www.oracle.com/a/b/*</th>
+ * <tr><th scope="row">http://www.example.com/a/b/*</th>
  *   <td>The '*' character refers to all resources in the same "directory" - in
  *       other words all resources with the same number of path components, and
  *       which only differ in the final path component, represented by the '*'.
  *   </td>
  * </tr>
- * <tr><th scope="row">http://www.oracle.com/a/b/-</th>
+ * <tr><th scope="row">http://www.example.com/a/b/-</th>
  *   <td>The '-' character refers to all resources recursively below the
- *       preceding path (e.g. http://www.oracle.com/a/b/c/d/e.html matches this
+ *       preceding path (e.g. http://www.example.com/a/b/c/d/e.html matches this
  *       example).
  *   </td>
  * </tr>
@@ -267,9 +267,9 @@ public final class URLPermission extends Permission {
      * <li>if this's url scheme is not equal to p's url scheme return false</li>
      * <li>if the scheme specific part of this's url is '*' return true</li>
      * <li>if the set of hosts defined by p's url hostrange is not a subset of
-     *     this's url hostrange then return false. For example, "*.foo.oracle.com"
-     *     is a subset of "*.oracle.com". "foo.bar.oracle.com" is not
-     *     a subset of "*.foo.oracle.com"</li>
+     *     this's url hostrange then return false. For example, "*.foo.example.com"
+     *     is a subset of "*.example.com". "foo.bar.example.com" is not
+     *     a subset of "*.foo.example.com"</li>
      * <li>if the portrange defined by p's url is not a subset of the
      *     portrange defined by this's url then return false.
      * <li>if the path or paths specified by p's url are contained in the
@@ -409,7 +409,7 @@ public final class URLPermission extends Permission {
             char c = methods.charAt(i);
             if (c == ',') {
                 String s = b.toString();
-                if (s.length() > 0)
+                if (!s.isEmpty())
                     l.add(s);
                 b = new StringBuilder();
             } else if (c == ' ' || c == '\t') {
@@ -423,7 +423,7 @@ public final class URLPermission extends Permission {
             }
         }
         String s = b.toString();
-        if (s.length() > 0)
+        if (!s.isEmpty())
             l.add(s);
         return l;
     }
@@ -448,7 +448,7 @@ public final class URLPermission extends Permission {
                 b.append(c);
             } else if (c == ',') {
                 String s = b.toString();
-                if (s.length() > 0)
+                if (!s.isEmpty())
                     l.add(s);
                 b = new StringBuilder();
                 capitalizeNext = true;
@@ -458,7 +458,7 @@ public final class URLPermission extends Permission {
             }
         }
         String s = b.toString();
-        if (s.length() > 0)
+        if (!s.isEmpty())
             l.add(s);
         return l;
     }
@@ -533,11 +533,11 @@ public final class URLPermission extends Permission {
             String thishost = this.p.hostname();
             String thathost = that.p.hostname();
 
-            if (p.wildcard() && thishost.equals("")) {
+            if (p.wildcard() && thishost.isEmpty()) {
                 // this "*" implies all others
                 return true;
             }
-            if (that.p.wildcard() && thathost.equals("")) {
+            if (that.p.wildcard() && thathost.isEmpty()) {
                 // that "*" can only be implied by this "*"
                 return false;
             }

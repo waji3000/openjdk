@@ -1462,23 +1462,6 @@ void java_lang_Class::release_set_array_klass(oop java_class, Klass* klass) {
 }
 
 
-bool java_lang_Class::is_primitive(oop java_class) {
-  // should assert:
-  //assert(java_lang_Class::is_instance(java_class), "must be a Class object");
-  bool is_primitive = (java_class->metadata_field(_klass_offset) == NULL);
-
-#ifdef ASSERT
-  if (is_primitive) {
-    Klass* k = ((Klass*)java_class->metadata_field(_array_klass_offset));
-    assert(k == NULL || is_java_primitive(ArrayKlass::cast(k)->element_type()),
-        "Should be either the T_VOID primitive or a java primitive");
-  }
-#endif
-
-  return is_primitive;
-}
-
-
 BasicType java_lang_Class::primitive_type(oop java_class) {
   assert(java_lang_Class::is_primitive(java_class), "just checking");
   Klass* ak = ((Klass*)java_class->metadata_field(_array_klass_offset));
@@ -3741,6 +3724,7 @@ oop java_lang_invoke_CallSite::context_no_keepalive(oop call_site) {
 // Support for java_lang_invoke_MethodHandleNatives_CallSiteContext
 
 int java_lang_invoke_MethodHandleNatives_CallSiteContext::_vmdependencies_offset;
+int java_lang_invoke_MethodHandleNatives_CallSiteContext::_last_cleanup_offset;
 
 void java_lang_invoke_MethodHandleNatives_CallSiteContext::compute_offsets() {
   InstanceKlass* k = SystemDictionary::Context_klass();
@@ -3755,8 +3739,9 @@ void java_lang_invoke_MethodHandleNatives_CallSiteContext::serialize_offsets(Ser
 
 DependencyContext java_lang_invoke_MethodHandleNatives_CallSiteContext::vmdependencies(oop call_site) {
   assert(java_lang_invoke_MethodHandleNatives_CallSiteContext::is_instance(call_site), "");
-  intptr_t* vmdeps_addr = (intptr_t*)call_site->field_addr(_vmdependencies_offset);
-  DependencyContext dep_ctx(vmdeps_addr);
+  nmethodBucket* volatile* vmdeps_addr = (nmethodBucket* volatile*)call_site->field_addr(_vmdependencies_offset);
+  volatile uint64_t* last_cleanup_addr = (volatile uint64_t*)call_site->field_addr(_last_cleanup_offset);
+  DependencyContext dep_ctx(vmdeps_addr, last_cleanup_addr);
   return dep_ctx;
 }
 

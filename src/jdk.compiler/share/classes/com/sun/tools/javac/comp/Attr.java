@@ -1121,7 +1121,7 @@ public class Attr extends JCTree.Visitor {
 
     public void visitVarDef(JCVariableDecl tree) {
         // Local variables have not been entered yet, so we need to do it now:
-        if (env.info.scope.owner.kind == MTH) {
+        if (env.info.scope.owner.kind == MTH || env.info.scope.owner.kind == VAR) {
             if (tree.sym != null) {
                 // parameters have already been entered
                 env.info.scope.enter(tree.sym);
@@ -1777,9 +1777,6 @@ public class Attr extends JCTree.Visitor {
         Type condType(List<DiagnosticPosition> positions, List<Type> condTypes) {
             if (condTypes.isEmpty()) {
                 return syms.objectType; //TODO: how to handle?
-            }
-            if (condTypes.size() == 1) {
-                return condTypes.head;
             }
             Type first = condTypes.head;
             // If same type, that is the result
@@ -2905,6 +2902,15 @@ public class Attr extends JCTree.Visitor {
                         return;
                     }
                     super.scan(tree);
+                }
+
+                @Override
+                public void visitClassDef(JCClassDecl that) {
+                    // or class declaration trees!
+                }
+
+                public void visitLambda(JCLambda that) {
+                    // or lambda expressions!
                 }
             }.scan(tree);
         }

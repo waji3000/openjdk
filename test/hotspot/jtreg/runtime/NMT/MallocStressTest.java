@@ -57,21 +57,19 @@ public class MallocStressTest {
         release
     };
 
-    static TestPhase phase = TestPhase.alloc;
+    static volatile TestPhase phase = TestPhase.alloc;
 
     // malloc'd memory
-    static ArrayList<MallocMemory>  mallocd_memory = new ArrayList<MallocMemory>();
+    static final ArrayList<MallocMemory>  mallocd_memory = new ArrayList<MallocMemory>();
     static long                     mallocd_total  = 0;
     static WhiteBox                 whiteBox;
     static AtomicInteger            pause_count = new AtomicInteger();
 
-    static boolean                  is_64_bit_system;
+    static final boolean            is_64_bit_system = Platform.is64bit();
 
     private static boolean is_64_bit_system() { return is_64_bit_system; }
 
     public static void main(String args[]) throws Exception {
-        is_64_bit_system = (Platform.is64bit());
-
         OutputAnalyzer output;
         whiteBox = WhiteBox.getWhiteBox();
 
@@ -186,13 +184,19 @@ public class MallocStressTest {
                 if (size == 0) size = 1;
                 long addr = MallocStressTest.whiteBox.NMTMallocWithPseudoStack(size, r);
                 if (addr != 0) {
-                    MallocMemory mem = new MallocMemory(addr, size);
-                    synchronized(MallocStressTest.mallocd_memory) {
-                        MallocStressTest.mallocd_memory.add(mem);
-                        MallocStressTest.mallocd_total += size;
+                    try {
+                        MallocMemory mem = new MallocMemory(addr, size);
+                        synchronized(MallocStressTest.mallocd_memory) {
+                            MallocStressTest.mallocd_memory.add(mem);
+                            MallocStressTest.mallocd_total += size;
+                        }
+                    } catch (OutOfMemoryError e) {
+                        // Don't include this malloc memory because it didn't
+                        // get recorded in mallocd_memory list.
+                        MallocStressTest.whiteBox.NMTFree(addr);
+                        break;
                     }
                 } else {
-                    System.out.println("Out of malloc memory");
                     break;
                 }
             }

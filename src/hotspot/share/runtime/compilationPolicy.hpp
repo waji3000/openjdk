@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
 #include "code/nmethod.hpp"
 #include "compiler/compileBroker.hpp"
 #include "memory/allocation.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 #include "utilities/growableArray.hpp"
 
 // The CompilationPolicy selects which method (if any) should be compiled.
@@ -36,6 +36,7 @@
 // interpreted).
 class CompileTask;
 class CompileQueue;
+class RFrame;
 
 class CompilationPolicy : public CHeapObj<mtCompiler> {
   static CompilationPolicy* _policy;
